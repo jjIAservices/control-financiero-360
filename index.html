@@ -1,48 +1,189 @@
-function renderDashboard(data) {
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal 360 | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        body { background: #020617; color: white; font-family: 'Inter', sans-serif; min-height: 100vh; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        .tab-button.active { border-bottom: 3px solid #3b82f6; color: #3b82f6; opacity: 1; }
+        .card { background: rgba(30, 41, 59, 0.4); border: 1px solid #1e293b; border-radius: 1rem; padding: 1.25rem; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6">
+            <div>
+                <h1 class="text-3xl font-black bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent italic">PERSONAL 360°</h1>
+                <p id="status" class="text-slate-500 text-[10px] uppercase tracking-widest mt-2">Conectando con Google Drive...</p>
+            </div>
+            <div class="flex gap-4">
+                <div class="card text-right py-2 px-6 shadow-xl">
+                    <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Gasto Total</p>
+                    <h2 id="gastoGlobal" class="text-2xl font-black text-white">0.00 €</h2>
+                </div>
+            </div>
+        </header>
+
+        <nav class="flex border-b border-slate-800 mb-8 overflow-x-auto gap-2">
+            <button onclick="openTab(event, 'global')" class="tab-button active px-6 py-3 opacity-50 whitespace-nowrap text-xs font-bold">GLOBAL</button>
+            <button onclick="openTab(event, 'hogar')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap text-xs font-bold">HOGAR</button>
+            <button onclick="openTab(event, 'coche')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap text-xs font-bold">COCHE</button>
+            <button onclick="openTab(event, 'ocio')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap text-xs font-bold">OCIO</button>
+            <button onclick="openTab(event, 'deudas')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap text-xs font-bold">DEUDAS</button>
+            <button onclick="openTab(event, 'resto')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap text-xs font-bold">RESTO</button>
+        </nav>
+
+        <div id="global" class="tab-content active">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="card min-h-[300px] flex flex-col items-center justify-center">
+                    <canvas id="chartCategorias"></canvas>
+                </div>
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="card flex justify-between items-center border-l-4 border-l-red-500">
+                        <span class="text-slate-400 text-xs font-bold uppercase">Intereses Pagados</span>
+                        <span id="totalIntereses" class="text-xl font-bold text-red-400">0.00 €</span>
+                    </div>
+                    <div class="card flex justify-between items-center border-l-4 border-l-emerald-400">
+                        <span class="text-slate-400 text-xs font-bold uppercase">Amortización</span>
+                        <span id="totalAmortizado" class="text-xl font-bold text-emerald-400">0.00 €</span>
+                    </div>
+                    <div class="card flex justify-between items-center border-l-4 border-l-blue-400">
+                        <span class="text-slate-400 text-xs font-bold uppercase">Inversión</span>
+                        <span id="totalInversion" class="text-xl font-bold text-blue-400">0.00 €</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="hogar" class="tab-content"><div class="card"><table class="w-full text-left text-sm"><tbody id="tbody-hogar" class="divide-y divide-slate-800"></tbody></table></div></div>
+        <div id="coche" class="tab-content"><div class="card"><table class="w-full text-left text-sm"><tbody id="tbody-coche" class="divide-y divide-slate-800"></tbody></table></div></div>
+        <div id="ocio" class="tab-content"><div class="card"><table class="w-full text-left text-sm"><tbody id="tbody-ocio" class="divide-y divide-slate-800"></tbody></table></div></div>
+        <div id="deudas" class="tab-content"><div class="card"><table class="w-full text-left text-sm"><tbody id="tbody-deudas" class="divide-y divide-slate-800"></tbody></table></div></div>
+        <div id="resto" class="tab-content"><div class="card"><table class="w-full text-left text-sm"><tbody id="tbody-resto" class="divide-y divide-slate-800"></tbody></table></div></div>
+    </div>
+
+    <script>
+        // PEGA AQUÍ TU URL CSV
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRoPnUWFZlzPKi4UqJH68gT_NbGxQNa6pypWzZ1iyU0hV61mhjcjSH6WzocJT0o0nHcMYyhoGEfmg1_/pub?gid=2145445800&single=true&output=csvL'; 
+
+        let myChart;
+
+        function openTab(evt, tabName) {
+            document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+            document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        function init() {
+            if(SHEET_URL.includes('TU_URL_AQUI')) {
+                document.getElementById('status').innerText = 'ERROR: FALTA LA URL';
+                return;
+            }
+            Papa.parse(SHEET_URL, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    processData(results.data);
+                }
+            });
+        }
+
+        function processData(data) {
             let totals = { total: 0, intereses: 0, amortizado: 0, inversion: 0 };
             let catStats = { Hogar: 0, Coche: 0, Ocio: 0, Deudas: 0, Resto: 0 };
             
-            ['hogar', 'coche', 'ocio', 'deudas', 'resto'].forEach(id => {
-                const el = document.getElementById(`tbody-${id}`);
-                if(el) el.innerHTML = '';
-            });
+            // Limpiar tablas
+            ['hogar', 'coche', 'ocio', 'deudas', 'resto'].forEach(id => document.getElementById(`tbody-${id}`).innerHTML = '');
 
-            // Procesamos los datos
             data.forEach(row => {
-                // Buscamos cualquier columna que se parezca a "Fecha" o "Importe"
-                const colFecha = row.Fecha || row.fecha || row[Object.keys(row)[0]];
-                const colImporte = row.Importe || row.importe || row.monto || row.Monto;
-                
-                if (!colFecha || colFecha.trim() === "" || !colImporte) return;
+                // Identificar columnas de forma flexible
+                const keys = Object.keys(row);
+                const findKey = (name) => keys.find(k => k.toLowerCase().includes(name.toLowerCase()));
 
-                // Limpiar el número de símbolos extraños
-                const monto = parseFloat(colImporte.toString().replace(/[$.€ ]/g, '').replace('.','').replace(',','.')) || 0;
+                const fecha = row[findKey('Fecha')];
+                const importeStr = row[findKey('Importe')] || row[findKey('Monto')];
                 
+                // Si no hay fecha o importe en esta fila, es una fila vacía del Sheet -> STOP
+                if(!fecha || fecha.trim() === "" || !importeStr) return;
+
+                // Limpiar números
+                const cleanNum = (val) => {
+                    if(!val) return 0;
+                    let n = val.toString().replace(/[$.€\s]/g, '').replace(',', '.');
+                    return parseFloat(n) || 0;
+                };
+
+                const monto = cleanNum(importeStr);
+                const interes = cleanNum(row[findKey('Int.')] || row[findKey('Interes')]);
+                const amort = cleanNum(row[findKey('Amort')] || row[findKey('Amortización')]);
+                const categoria = (row[findKey('Categoría')] || row[findKey('Categoria')] || 'Resto').trim();
+                const tipo = (row[findKey('Tipo')] || '').trim().toLowerCase();
+
+                // Sumar totales
                 totals.total += monto;
+                totals.intereses += interes;
+                totals.amortizado += amort;
+                if(tipo.includes('inversión') || tipo.includes('inversion')) totals.inversion += monto;
 
-                // Identificar categoría
-                let cat = (row.Categoría || row.categoria || 'Resto').trim();
-                // Normalizar la primera letra a Mayúscula
-                cat = cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
-
-                if(catStats[cat] !== undefined) catStats[cat] += monto;
+                // Sumar a gráfico
+                let catNormalizada = categoria.charAt(0).toUpperCase() + categoria.slice(1).toLowerCase();
+                if(catStats[catNormalizada] !== undefined) catStats[catNormalizada] += monto;
                 else catStats['Resto'] += monto;
 
-                const table = document.getElementById(`tbody-${cat.toLowerCase()}`);
-                if(table) {
-                    table.innerHTML += `
-                        <tr class="border-b border-slate-800/50">
-                            <td class="py-2 text-slate-500">${colFecha}</td>
-                            <td class="py-2">${row.Concepto || row.concepto || 'Sin concepto'}</td>
-                            <td class="py-2 text-right font-bold">${monto.toFixed(2)}€</td>
-                        </tr>`;
-                }
+                // Añadir a tabla
+                const tableId = `tbody-${catNormalizada.toLowerCase()}`;
+                const table = document.getElementById(tableId) || document.getElementById('tbody-resto');
+                table.innerHTML += `
+                    <tr class="hover:bg-slate-800/50">
+                        <td class="p-4 text-slate-500 text-[10px] w-24">${fecha}</td>
+                        <td class="p-4 font-medium text-slate-200">${row[findKey('Concepto')] || '-'}</td>
+                        <td class="p-4 text-right font-bold text-white">${monto.toFixed(2)} €</td>
+                    </tr>
+                `;
             });
 
-            // Actualizar textos
-            document.getElementById('gastoGlobal').innerText = totals.total.toLocaleString() + " €";
-            document.getElementById('status').innerText = 'Sincronizado';
-            
-            // Dibujar gráfica
-            actualizarGrafica(catStats);
+            // Actualizar interfaz
+            const f = (n) => n.toLocaleString('es-ES', {minimumFractionDigits: 2}) + " €";
+            document.getElementById('gastoGlobal').innerText = f(totals.total);
+            document.getElementById('totalIntereses').innerText = f(totals.intereses);
+            document.getElementById('totalAmortizado').innerText = f(totals.amortizado);
+            document.getElementById('totalInversion').innerText = f(totals.inversion);
+            document.getElementById('status').innerText = 'SINCRONIZADO';
+
+            updateChart(catStats);
         }
+
+        function updateChart(stats) {
+            const ctx = document.getElementById('chartCategorias').getContext('2d');
+            if(myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(stats),
+                    datasets: [{
+                        data: Object.values(stats),
+                        backgroundColor: ['#3b82f6', '#f59e0b', '#ec4899', '#ef4444', '#64748b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', padding: 20 } } }
+                }
+            });
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
