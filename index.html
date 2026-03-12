@@ -8,12 +8,17 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
+        body { background: #020617; color: white; font-family: 'Inter', sans-serif; overflow-x: hidden; }
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
         .tab-button.active { border-bottom: 3px solid #3b82f6; color: #3b82f6; opacity: 1; font-weight: bold; }
-        body { background: #0f172a; color: white; font-family: 'Inter', sans-serif; }
-        .card { background: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 1rem; padding: 1.5rem; backdrop-filter: blur(10px); }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .card { background: rgba(30, 41, 59, 0.4); border: 1px solid #1e293b; border-radius: 1rem; padding: 1.25rem; backdrop-filter: blur(10px); }
+        .chart-container { position: relative; height: 350px; width: 100%; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        /* Scrollbar simple */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -21,81 +26,67 @@
     <div class="max-w-6xl mx-auto">
         <header class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6">
             <div>
-                <h1 class="text-4xl font-black bg-gradient-to-r from-blue-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent italic">
+                <h1 class="text-3xl font-black bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent italic">
                     PERSONAL 360°
                 </h1>
-                <p class="text-slate-400 mt-1 uppercase text-xs tracking-[0.2em]">Sincronización Live con Google Drive</p>
+                <p id="status" class="text-slate-500 text-[10px] uppercase tracking-widest mt-1 italic">Sincronizando con Google Drive...</p>
             </div>
-            <div class="card flex gap-8 py-4 px-8 shadow-2xl">
-                <div class="text-right border-r border-slate-700 pr-8">
-                    <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Gasto Total Mes</p>
-                    <h2 id="gastoGlobal" class="text-3xl font-black text-white">0.00 €</h2>
+            <div class="flex gap-4 w-full md:w-auto">
+                <div class="card flex-1 md:flex-none text-right py-3 px-6 shadow-xl">
+                    <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Gasto Total Mes</p>
+                    <h2 id="gastoGlobal" class="text-2xl font-black">0.00 €</h2>
                 </div>
-                <div class="text-right">
-                    <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Intereses Pagados</p>
-                    <h2 id="totalIntereses" class="text-3xl font-black text-red-400">0.00 €</h2>
+                <div class="card flex-1 md:flex-none text-right py-3 px-6 border-l-2 border-l-red-500 shadow-xl">
+                    <p class="text-[10px] text-slate-400 uppercase font-bold mb-1">Intereses Pagados</p>
+                    <h2 id="totalIntereses" class="text-2xl font-black text-red-400">0.00 €</h2>
                 </div>
             </div>
         </header>
 
-        <nav class="flex border-b border-slate-800 mb-8 overflow-x-auto no-scrollbar">
-            <button onclick="openTab(event, 'global')" class="tab-button active px-8 py-4 opacity-50 transition-all whitespace-nowrap">GLOBAL</button>
-            <button onclick="openTab(event, 'hogar')" class="tab-button px-8 py-4 opacity-50 transition-all whitespace-nowrap">HOGAR</button>
-            <button onclick="openTab(event, 'coche')" class="tab-button px-8 py-4 opacity-50 transition-all whitespace-nowrap">COCHE</button>
-            <button onclick="event, openTab(event, 'ocio')" class="tab-button px-8 py-4 opacity-50 transition-all whitespace-nowrap">OCIO</button>
-            <button onclick="openTab(event, 'deudas')" class="tab-button px-8 py-4 opacity-50 transition-all whitespace-nowrap">DEUDAS</button>
+        <nav class="flex border-b border-slate-800 mb-8 overflow-x-auto gap-2">
+            <button onclick="openTab(event, 'global')" class="tab-button active px-6 py-3 opacity-50 whitespace-nowrap">GLOBAL</button>
+            <button onclick="openTab(event, 'hogar')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap">HOGAR</button>
+            <button onclick="openTab(event, 'coche')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap">COCHE</button>
+            <button onclick="openTab(event, 'ocio')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap">OCIO</button>
+            <button onclick="openTab(event, 'deudas')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap">DEUDAS</button>
+            <button onclick="openTab(event, 'resto')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap">RESTO</button>
         </nav>
 
         <div id="global" class="tab-content active">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="card min-h-[400px]">
-                    <h3 class="font-bold text-slate-400 mb-6 uppercase text-xs">Distribución de Gastos</h3>
+                <div class="card chart-container">
+                    <h3 class="text-slate-400 text-[10px] uppercase font-bold mb-4">Reparto por Categoría</h3>
                     <canvas id="chartCategorias"></canvas>
                 </div>
-                <div class="grid grid-cols-1 gap-6">
-                    <div class="card border-l-4 border-l-blue-500">
-                        <h4 class="text-slate-400 text-xs mb-1 uppercase font-bold">Estado Inversión</h4>
-                        <p class="text-2xl font-bold" id="totalInversion">0.00 €</p>
+                <div class="flex flex-col gap-4">
+                    <div class="card flex justify-between items-center border-l-4 border-l-blue-500">
+                        <span class="text-slate-400 uppercase text-xs font-bold">Inversión este mes</span>
+                        <span id="totalInversion" class="text-xl font-bold text-blue-400">0.00 €</span>
                     </div>
-                    <div class="card border-l-4 border-l-emerald-500">
-                        <h4 class="text-slate-400 text-xs mb-1 uppercase font-bold">Amortización Acumulada</h4>
-                        <p class="text-2xl font-bold text-emerald-400" id="totalAmortizado">0.00 €</p>
+                    <div class="card flex justify-between items-center border-l-4 border-l-emerald-500">
+                        <span class="text-slate-400 uppercase text-xs font-bold">Amortización de Deuda</span>
+                        <span id="totalAmortizado" class="text-xl font-bold text-emerald-400">0.00 €</span>
+                    </div>
+                    <div class="card bg-slate-900/20 text-slate-400 text-sm italic">
+                        Consejo: Las categorías se auto-gestionan según tu Google Sheet. Asegúrate de escribir "Hogar", "Coche", etc., correctamente.
                     </div>
                 </div>
             </div>
         </div>
 
-        <div id="hogar" class="tab-content">
-            <div class="card overflow-x-auto"><table class="w-full text-left"><tbody id="tbody-hogar"></tbody></table></div>
-        </div>
-        <div id="coche" class="tab-content">
-            <div class="card overflow-x-auto"><table class="w-full text-left"><tbody id="tbody-coche"></tbody></table></div>
-        </div>
-        <div id="ocio" class="tab-content">
-            <div class="card overflow-x-auto"><table class="w-full text-left"><tbody id="tbody-ocio"></tbody></table></div>
-        </div>
+        <div id="hogar" class="tab-content"><div class="card overflow-hidden"><table class="w-full text-left text-sm"><tbody id="tbody-hogar" class="divide-y divide-slate-800"></tbody></table></div></div>
+        <div id="coche" class="tab-content"><div class="card overflow-hidden"><table class="w-full text-left text-sm"><tbody id="tbody-coche" class="divide-y divide-slate-800"></tbody></table></div></div>
+        <div id="ocio" class="tab-content"><div class="card overflow-hidden"><table class="w-full text-left text-sm"><tbody id="tbody-ocio" class="divide-y divide-slate-800"></tbody></table></div></div>
+        <div id="deudas" class="tab-content"><div class="card overflow-hidden"><table class="w-full text-left text-sm"><tbody id="tbody-deudas" class="divide-y divide-slate-800"></tbody></table></div></div>
+        <div id="resto" class="tab-content"><div class="card overflow-hidden"><table class="w-full text-left text-sm"><tbody id="tbody-resto" class="divide-y divide-slate-800"></tbody></table></div></div>
 
-        <div id="deudas" class="tab-content">
-            <div id="prestamos-cards" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                </div>
-            <div class="card overflow-x-auto">
-                <h3 class="font-bold mb-4 text-slate-400 uppercase text-[10px] tracking-widest">Desglose de Recibos y Cuotas</h3>
-                <table class="w-full text-left text-sm">
-                    <thead class="text-slate-500 border-b border-slate-800">
-                        <tr><th class="p-4">Fecha</th><th class="p-4">Concepto</th><th class="p-4 text-right italic text-red-400">Interés</th><th class="p-4 text-right text-emerald-400">Amortizado</th><th class="p-4 text-right">Monto</th></tr>
-                    </thead>
-                    <tbody id="tbody-deudas" class="divide-y divide-slate-800"></tbody>
-                </table>
-            </div>
-        </div>
     </div>
 
     <script>
-        // --- CONFIGURACIÓN ---
-        // 1. Pega aquí tu link de Google Sheets (Publicado como CSV)
-        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRoPnUWFZlzPKi4UqJH68gT_NbGxQNa6pypWzZ1iyU0hV61mhjcjSH6WzocJT0o0nHcMYyhoGEfmg1_/pub?gid=2145445800&single=true&output=csv'; 
+        // SUSTITUYE ESTA URL POR TU ENLACE CSV PUBLICADO
+        const SHEET_URL = 'TU_URL_AQUI'; 
+        let myChart;
 
-        // 2. Lógica de Pestañas
         function openTab(evt, tabName) {
             document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
             document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
@@ -103,17 +94,16 @@
             evt.currentTarget.classList.add("active");
         }
 
-        // 3. Carga de Datos
         function init() {
-            if(SHEET_URL === 'PEGUE_SU_URL_CSV_AQUI') {
-                alert('Por favor, pega tu URL de Google Sheets en el código.');
-                return;
-            }
+            if(SHEET_URL === 'TU_URL_AQUI') return;
+            
             Papa.parse(SHEET_URL, {
                 download: true,
                 header: true,
+                skipEmptyLines: 'greedy', // Salta filas vacías automáticamente
                 complete: function(results) {
                     renderDashboard(results.data);
+                    document.getElementById('status').innerText = 'Datos actualizados ahora mismo';
                 }
             });
         }
@@ -122,52 +112,61 @@
             let totals = { total: 0, intereses: 0, amortizado: 0, inversion: 0 };
             let catStats = { Hogar: 0, Coche: 0, Ocio: 0, Deudas: 0, Resto: 0 };
             
-            // Limpiar tablas
-            const tablas = ['hogar', 'coche', 'ocio', 'deudas'];
-            tablas.forEach(t => document.getElementById(`tbody-${t}`).innerHTML = '');
+            // Limpiar todas las tablas
+            ['hogar', 'coche', 'ocio', 'deudas', 'resto'].forEach(id => {
+                const el = document.getElementById(`tbody-${id}`);
+                if(el) el.innerHTML = ''; 
+            });
 
             data.forEach(row => {
-                const monto = parseFloat(row.Importe) || 0;
-                const interes = parseFloat(row['Int. Recibo']) || 0;
-                const amort = parseFloat(row['Amort. Recibo']) || 0;
+                // FILTRO ANTI-SCROLL: Ignora filas sin Fecha o sin Importe
+                if (!row.Fecha || !row.Importe || row.Fecha.trim() === "") return;
+
+                const monto = parseFloat(row.Importe.toString().replace('.', '').replace(',', '.')) || 0;
+                const int = parseFloat((row['Int. Recibo'] || "0").toString().replace('.', '').replace(',', '.')) || 0;
+                const amo = parseFloat((row['Amort. Recibo'] || "0").toString().replace('.', '').replace(',', '.')) || 0;
 
                 totals.total += monto;
-                totals.intereses += interes;
-                totals.amortizado += amort;
-                if(row.Tipo === 'Inversión') totals.inversion += monto;
+                totals.intereses += int;
+                totals.amortizado += amo;
+                if(row.Tipo?.trim() === 'Inversión') totals.inversion += monto;
 
-                const cat = row.Categoría;
-                if(catStats[cat] !== undefined) catStats[cat] += monto;
+                // Sumar a estadísticas de categoría
+                const catRaw = row.Categoría?.trim() || 'Resto';
+                if(catStats[catRaw] !== undefined) {
+                    catStats[catRaw] += monto;
+                } else {
+                    catStats['Resto'] += monto;
+                }
 
-                // Inyectar en tablas correspondientes
-                const tableBody = document.getElementById(`tbody-${cat.toLowerCase()}`);
-                if(tableBody) {
-                    tableBody.innerHTML += `
-                        <tr class="hover:bg-slate-800/30 transition-colors">
-                            <td class="p-4 text-slate-500 text-xs">${row.Fecha}</td>
-                            <td class="p-4 font-medium">${row.Concepto}</td>
-                            ${cat === 'Deudas' || cat === 'Hogar' ? `
-                                <td class="p-4 text-right italic text-red-400/70">${interes > 0 ? interes.toFixed(2)+'€' : '-'}</td>
-                                <td class="p-4 text-right text-emerald-400/70">${amort > 0 ? amort.toFixed(2)+'€' : '-'}</td>
-                            ` : ''}
-                            <td class="p-4 text-right font-bold ${monto > 0 ? 'text-white' : 'text-slate-500'}">${monto.toFixed(2)} €</td>
+                // Inyectar en la tabla correspondiente
+                const targetTable = document.getElementById(`tbody-${catRaw.toLowerCase()}`);
+                if(targetTable) {
+                    targetTable.innerHTML += `
+                        <tr class="hover:bg-slate-800/40">
+                            <td class="p-4 text-slate-500 text-[10px] w-24">${row.Fecha}</td>
+                            <td class="p-4 font-medium">${row.Concepto || '-'}</td>
+                            <td class="p-4 text-right font-bold text-slate-100">${monto.toLocaleString('es-ES', {minimumFractionDigits: 2})} €</td>
                         </tr>
                     `;
                 }
             });
 
-            // Actualizar KPIs
-            document.getElementById('gastoGlobal').innerText = totals.total.toLocaleString() + " €";
-            document.getElementById('totalIntereses').innerText = totals.intereses.toLocaleString() + " €";
-            document.getElementById('totalAmortizado').innerText = totals.amortizado.toLocaleString() + " €";
-            document.getElementById('totalInversion').innerText = totals.inversion.toLocaleString() + " €";
+            // Formatear KPIs
+            const f = (val) => val.toLocaleString('es-ES', {minimumFractionDigits: 2}) + " €";
+            document.getElementById('gastoGlobal').innerText = f(totals.total);
+            document.getElementById('totalIntereses').innerText = f(totals.intereses);
+            document.getElementById('totalAmortizado').innerText = f(totals.amortizado);
+            document.getElementById('totalInversion').innerText = f(totals.inversion);
 
-            renderChart(catStats);
+            updateChart(catStats);
         }
 
-        function renderChart(stats) {
+        function updateChart(stats) {
             const ctx = document.getElementById('chartCategorias').getContext('2d');
-            new Chart(ctx, {
+            if(myChart) myChart.destroy();
+            
+            myChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     labels: Object.keys(stats),
@@ -175,15 +174,15 @@
                         data: Object.values(stats),
                         backgroundColor: ['#3b82f6', '#f59e0b', '#ec4899', '#ef4444', '#64748b'],
                         borderWidth: 0,
-                        hoverOffset: 20
+                        hoverOffset: 15
                     }]
                 },
                 options: {
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'bottom', labels: { color: '#94a3b8', padding: 20, font: { size: 12 } } }
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, padding: 20 } }
                     },
-                    cutout: '70%'
+                    cutout: '75%'
                 }
             });
         }
