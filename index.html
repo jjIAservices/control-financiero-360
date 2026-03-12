@@ -1,136 +1,48 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personal 360 | Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-    <style>
-        body { background: #020617; color: white; font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .tab-button.active { border-bottom: 3px solid #3b82f6; color: #3b82f6; opacity: 1; }
-        .card { background: rgba(30, 41, 59, 0.4); border: 1px solid #1e293b; border-radius: 1rem; padding: 1rem; }
-        /* Limitar altura para evitar scroll infinito del body */
-        main { flex: 1; overflow-y: auto; }
-        .chart-container { position: relative; height: 250px; }
-    </style>
-</head>
-<body class="p-4 md:p-8">
-
-    <div class="max-w-6xl mx-auto w-full">
-        <header class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-black text-blue-400 italic">PERSONAL 360°</h1>
-            <div id="status" class="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-1 rounded border border-blue-500/20">Cargando...</div>
-        </header>
-
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-center">
-            <div class="card"><p class="text-[10px] text-slate-500 uppercase">Gastos</p><p id="gastoGlobal" class="font-bold">-</p></div>
-            <div class="card"><p class="text-[10px] text-slate-500 uppercase">Intereses</p><p id="totalIntereses" class="font-bold text-red-400">-</p></div>
-            <div class="card"><p class="text-[10px] text-slate-500 uppercase">Inversión</p><p id="totalInversion" class="font-bold text-blue-400">-</p></div>
-            <div class="card"><p class="text-[10px] text-slate-500 uppercase">Amortizado</p><p id="totalAmortizado" class="font-bold text-emerald-400">-</p></div>
-        </div>
-
-        <nav class="flex border-b border-slate-800 mb-6 gap-4 overflow-x-auto">
-            <button onclick="openTab(event, 'global')" class="tab-button active pb-2 text-xs font-bold opacity-50">GLOBAL</button>
-            <button onclick="openTab(event, 'hogar')" class="tab-button pb-2 text-xs font-bold opacity-50">HOGAR</button>
-            <button onclick="openTab(event, 'coche')" class="tab-button pb-2 text-xs font-bold opacity-50">COCHE</button>
-            <button onclick="openTab(event, 'ocio')" class="tab-button pb-2 text-xs font-bold opacity-50">OCIO</button>
-            <button onclick="openTab(event, 'deudas')" class="tab-button pb-2 text-xs font-bold opacity-50">DEUDAS</button>
-            <button onclick="openTab(event, 'resto')" class="tab-button pb-2 text-xs font-bold opacity-50">RESTO</button>
-        </nav>
-
-        <main>
-            <div id="global" class="tab-content active">
-                <div class="card chart-container"><canvas id="chartCategorias"></canvas></div>
-            </div>
-            <div id="hogar" class="tab-content"><div class="card"><table class="w-full text-xs text-left"><tbody id="tbody-hogar"></tbody></table></div></div>
-            <div id="coche" class="tab-content"><div class="card"><table class="w-full text-xs text-left"><tbody id="tbody-coche"></tbody></table></div></div>
-            <div id="ocio" class="tab-content"><div class="card"><table class="w-full text-xs text-left"><tbody id="tbody-ocio"></tbody></table></div></div>
-            <div id="deudas" class="tab-content"><div class="card"><table class="w-full text-xs text-left"><tbody id="tbody-deudas"></tbody></table></div></div>
-            <div id="resto" class="tab-content"><div class="card"><table class="w-full text-xs text-left"><tbody id="tbody-resto"></tbody></table></div></div>
-        </main>
-    </div>
-
-    <script>
-        const SHEET_URL = 'TU_URL_AQUI'; 
-        let myChart;
-
-        function openTab(evt, tabName) {
-            document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
-            document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
-            document.getElementById(tabName).classList.add("active");
-            evt.currentTarget.classList.add("active");
-        }
-
-        function init() {
-            if(SHEET_URL.includes('TU_URL')) return;
-            Papa.parse(SHEET_URL, {
-                download: true,
-                header: true,
-                complete: function(results) {
-                    // FILTRAR FILAS VACÍAS ANTES DE PROCESAR
-                    const cleanData = [];
-                    for (let row of results.data) {
-                        if (row.Fecha && row.Fecha.trim() !== "" && row.Importe) {
-                            cleanData.push(row);
-                        } else {
-                            break; // DETENER EL BUCLE en la primera fila vacía real
-                        }
-                    }
-                    renderDashboard(cleanData);
-                    document.getElementById('status').innerText = 'Sincronizado';
-                }
-            });
-        }
-
-        function renderDashboard(data) {
+function renderDashboard(data) {
             let totals = { total: 0, intereses: 0, amortizado: 0, inversion: 0 };
             let catStats = { Hogar: 0, Coche: 0, Ocio: 0, Deudas: 0, Resto: 0 };
             
-            ['hogar', 'coche', 'ocio', 'deudas', 'resto'].forEach(id => document.getElementById(`tbody-${id}`).innerHTML = '');
+            ['hogar', 'coche', 'ocio', 'deudas', 'resto'].forEach(id => {
+                const el = document.getElementById(`tbody-${id}`);
+                if(el) el.innerHTML = '';
+            });
 
+            // Procesamos los datos
             data.forEach(row => {
-                const monto = parseFloat(row.Importe.replace('.','').replace(',','.')) || 0;
-                const int = parseFloat(row['Int. Recibo']?.replace('.','').replace(',','.')) || 0;
-                const amo = parseFloat(row['Amort. Recibo']?.replace('.','').replace(',','.')) || 0;
+                // Buscamos cualquier columna que se parezca a "Fecha" o "Importe"
+                const colFecha = row.Fecha || row.fecha || row[Object.keys(row)[0]];
+                const colImporte = row.Importe || row.importe || row.monto || row.Monto;
+                
+                if (!colFecha || colFecha.trim() === "" || !colImporte) return;
 
+                // Limpiar el número de símbolos extraños
+                const monto = parseFloat(colImporte.toString().replace(/[$.€ ]/g, '').replace('.','').replace(',','.')) || 0;
+                
                 totals.total += monto;
-                totals.intereses += int;
-                totals.amortizado += amo;
-                if(row.Tipo?.includes('Inversión')) totals.inversion += monto;
 
-                const cat = row.Categoría?.trim() || 'Resto';
+                // Identificar categoría
+                let cat = (row.Categoría || row.categoria || 'Resto').trim();
+                // Normalizar la primera letra a Mayúscula
+                cat = cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+
                 if(catStats[cat] !== undefined) catStats[cat] += monto;
                 else catStats['Resto'] += monto;
 
                 const table = document.getElementById(`tbody-${cat.toLowerCase()}`);
                 if(table) {
-                    table.innerHTML += `<tr class="border-b border-slate-800/50"><td class="py-2 text-slate-500">${row.Fecha}</td><td class="py-2">${row.Concepto}</td><td class="py-2 text-right font-bold">${monto.toFixed(2)}€</td></tr>`;
+                    table.innerHTML += `
+                        <tr class="border-b border-slate-800/50">
+                            <td class="py-2 text-slate-500">${colFecha}</td>
+                            <td class="py-2">${row.Concepto || row.concepto || 'Sin concepto'}</td>
+                            <td class="py-2 text-right font-bold">${monto.toFixed(2)}€</td>
+                        </tr>`;
                 }
             });
 
-            const f = (n) => n.toLocaleString('es-ES') + " €";
-            document.getElementById('gastoGlobal').innerText = f(totals.total);
-            document.getElementById('totalIntereses').innerText = f(totals.intereses);
-            document.getElementById('totalAmortizado').innerText = f(totals.amortizado);
-            document.getElementById('totalInversion').innerText = f(totals.inversion);
-
-            if(myChart) myChart.destroy();
-            const ctx = document.getElementById('chartCategorias').getContext('2d');
-            myChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(catStats),
-                    datasets: [{ data: Object.values(catStats), backgroundColor: ['#3b82f6','#f59e0b','#ec4899','#ef4444','#64748b'], borderWidth: 0 }]
-                },
-                options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } } } }
-            });
+            // Actualizar textos
+            document.getElementById('gastoGlobal').innerText = totals.total.toLocaleString() + " €";
+            document.getElementById('status').innerText = 'Sincronizado';
+            
+            // Dibujar gráfica
+            actualizarGrafica(catStats);
         }
-
-        window.onload = init;
-    </script>
-</body>
-</html>
