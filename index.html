@@ -3,87 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personal 360 | Dashboard Financiero</title>
+    <title>Personal 360 | Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        body { background: #020617; color: white; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        body { background: #020617; color: white; font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; }
         .tab-content { display: none; }
-        .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
-        .tab-button.active { border-bottom: 3px solid #3b82f6; color: #3b82f6; opacity: 1; font-weight: bold; }
-        .card { background: rgba(30, 41, 59, 0.4); border: 1px solid #1e293b; border-radius: 1rem; padding: 1.25rem; backdrop-filter: blur(10px); }
-        .chart-container { position: relative; height: 350px; width: 100%; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        /* Scrollbar simple */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #020617; }
-        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        .tab-content.active { display: block; }
+        .tab-button.active { border-bottom: 3px solid #3b82f6; color: #3b82f6; opacity: 1; }
+        .card { background: rgba(30, 41, 59, 0.4); border: 1px solid #1e293b; border-radius: 1rem; padding: 1rem; }
+        /* Limitar altura para evitar scroll infinito del body */
+        main { flex: 1; overflow-y: auto; }
+        .chart-container { position: relative; height: 250px; }
     </style>
 </head>
 <body class="p-4 md:p-8">
 
-    <div class="max-w-6xl mx-auto">
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6">
-            <div>
-                <h1 class="text-3xl font-black bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent italic">
-                    PERSONAL 360°
-                </h1>
-                <p id="status" class="text-slate-500 text-[10px] uppercase tracking-widest mt-1 italic">Sincronizando con Google Drive...</p>
-            </div>
-            <div class="flex gap-4 w-full md:w-auto">
-                <div class="card flex-1 md:flex-none text-right py-3 px-6 shadow-xl">
-                    <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Gasto Total Mes</p>
-                    <h2 id="gastoGlobal" class="text-2xl font-black">0.00 €</h2>
-                </div>
-                <div class="card flex-1 md:flex-none text-right py-3 px-6 border-l-2 border-l-red-500 shadow-xl">
-                    <p class="text-[10px] text-slate-400 uppercase font-bold mb-1">Intereses Pagados</p>
-                    <h2 id="totalIntereses" class="text-2xl font-black text-red-400">0.00 €</h2>
-                </div>
-            </div>
+    <div class="max-w-6xl mx-auto w-full">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-black text-blue-400 italic">PERSONAL 360°</h1>
+            <div id="status" class="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-1 rounded border border-blue-500/20">Cargando...</div>
         </header>
 
-        <nav class="flex border-b border-slate-800 mb-8 overflow-x-auto gap-2">
-            <button onclick="openTab(event, 'global')" class="tab-button active px-6 py-3 opacity-50 whitespace-nowrap">GLOBAL</button>
-            <button onclick="openTab(event, 'hogar')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap">HOGAR</button>
-            <button onclick="openTab(event, 'coche')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap">COCHE</button>
-            <button onclick="openTab(event, 'ocio')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap">OCIO</button>
-            <button onclick="openTab(event, 'deudas')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap">DEUDAS</button>
-            <button onclick="openTab(event, 'resto')" class="tab-button px-6 py-3 opacity-50 whitespace-nowrap">RESTO</button>
-        </nav>
-
-        <div id="global" class="tab-content active">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="card chart-container">
-                    <h3 class="text-slate-400 text-[10px] uppercase font-bold mb-4">Reparto por Categoría</h3>
-                    <canvas id="chartCategorias"></canvas>
-                </div>
-                <div class="flex flex-col gap-4">
-                    <div class="card flex justify-between items-center border-l-4 border-l-blue-500">
-                        <span class="text-slate-400 uppercase text-xs font-bold">Inversión este mes</span>
-                        <span id="totalInversion" class="text-xl font-bold text-blue-400">0.00 €</span>
-                    </div>
-                    <div class="card flex justify-between items-center border-l-4 border-l-emerald-500">
-                        <span class="text-slate-400 uppercase text-xs font-bold">Amortización de Deuda</span>
-                        <span id="totalAmortizado" class="text-xl font-bold text-emerald-400">0.00 €</span>
-                    </div>
-                    <div class="card bg-slate-900/20 text-slate-400 text-sm italic">
-                        Consejo: Las categorías se auto-gestionan según tu Google Sheet. Asegúrate de escribir "Hogar", "Coche", etc., correctamente.
-                    </div>
-                </div>
-            </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-center">
+            <div class="card"><p class="text-[10px] text-slate-500 uppercase">Gastos</p><p id="gastoGlobal" class="font-bold">-</p></div>
+            <div class="card"><p class="text-[10px] text-slate-500 uppercase">Intereses</p><p id="totalIntereses" class="font-bold text-red-400">-</p></div>
+            <div class="card"><p class="text-[10px] text-slate-500 uppercase">Inversión</p><p id="totalInversion" class="font-bold text-blue-400">-</p></div>
+            <div class="card"><p class="text-[10px] text-slate-500 uppercase">Amortizado</p><p id="totalAmortizado" class="font-bold text-emerald-400">-</p></div>
         </div>
 
-        <div id="hogar" class="tab-content"><div class="card overflow-hidden"><table class="w-full text-left text-sm"><tbody id="tbody-hogar" class="divide-y divide-slate-800"></tbody></table></div></div>
-        <div id="coche" class="tab-content"><div class="card overflow-hidden"><table class="w-full text-left text-sm"><tbody id="tbody-coche" class="divide-y divide-slate-800"></tbody></table></div></div>
-        <div id="ocio" class="tab-content"><div class="card overflow-hidden"><table class="w-full text-left text-sm"><tbody id="tbody-ocio" class="divide-y divide-slate-800"></tbody></table></div></div>
-        <div id="deudas" class="tab-content"><div class="card overflow-hidden"><table class="w-full text-left text-sm"><tbody id="tbody-deudas" class="divide-y divide-slate-800"></tbody></table></div></div>
-        <div id="resto" class="tab-content"><div class="card overflow-hidden"><table class="w-full text-left text-sm"><tbody id="tbody-resto" class="divide-y divide-slate-800"></tbody></table></div></div>
+        <nav class="flex border-b border-slate-800 mb-6 gap-4 overflow-x-auto">
+            <button onclick="openTab(event, 'global')" class="tab-button active pb-2 text-xs font-bold opacity-50">GLOBAL</button>
+            <button onclick="openTab(event, 'hogar')" class="tab-button pb-2 text-xs font-bold opacity-50">HOGAR</button>
+            <button onclick="openTab(event, 'coche')" class="tab-button pb-2 text-xs font-bold opacity-50">COCHE</button>
+            <button onclick="openTab(event, 'ocio')" class="tab-button pb-2 text-xs font-bold opacity-50">OCIO</button>
+            <button onclick="openTab(event, 'deudas')" class="tab-button pb-2 text-xs font-bold opacity-50">DEUDAS</button>
+            <button onclick="openTab(event, 'resto')" class="tab-button pb-2 text-xs font-bold opacity-50">RESTO</button>
+        </nav>
 
+        <main>
+            <div id="global" class="tab-content active">
+                <div class="card chart-container"><canvas id="chartCategorias"></canvas></div>
+            </div>
+            <div id="hogar" class="tab-content"><div class="card"><table class="w-full text-xs text-left"><tbody id="tbody-hogar"></tbody></table></div></div>
+            <div id="coche" class="tab-content"><div class="card"><table class="w-full text-xs text-left"><tbody id="tbody-coche"></tbody></table></div></div>
+            <div id="ocio" class="tab-content"><div class="card"><table class="w-full text-xs text-left"><tbody id="tbody-ocio"></tbody></table></div></div>
+            <div id="deudas" class="tab-content"><div class="card"><table class="w-full text-xs text-left"><tbody id="tbody-deudas"></tbody></table></div></div>
+            <div id="resto" class="tab-content"><div class="card"><table class="w-full text-xs text-left"><tbody id="tbody-resto"></tbody></table></div></div>
+        </main>
     </div>
 
     <script>
-        // SUSTITUYE ESTA URL POR TU ENLACE CSV PUBLICADO
         const SHEET_URL = 'TU_URL_AQUI'; 
         let myChart;
 
@@ -95,15 +66,22 @@
         }
 
         function init() {
-            if(SHEET_URL === 'TU_URL_AQUI') return;
-            
+            if(SHEET_URL.includes('TU_URL')) return;
             Papa.parse(SHEET_URL, {
                 download: true,
                 header: true,
-                skipEmptyLines: 'greedy', // Salta filas vacías automáticamente
                 complete: function(results) {
-                    renderDashboard(results.data);
-                    document.getElementById('status').innerText = 'Datos actualizados ahora mismo';
+                    // FILTRAR FILAS VACÍAS ANTES DE PROCESAR
+                    const cleanData = [];
+                    for (let row of results.data) {
+                        if (row.Fecha && row.Fecha.trim() !== "" && row.Importe) {
+                            cleanData.push(row);
+                        } else {
+                            break; // DETENER EL BUCLE en la primera fila vacía real
+                        }
+                    }
+                    renderDashboard(cleanData);
+                    document.getElementById('status').innerText = 'Sincronizado';
                 }
             });
         }
@@ -112,78 +90,43 @@
             let totals = { total: 0, intereses: 0, amortizado: 0, inversion: 0 };
             let catStats = { Hogar: 0, Coche: 0, Ocio: 0, Deudas: 0, Resto: 0 };
             
-            // Limpiar todas las tablas
-            ['hogar', 'coche', 'ocio', 'deudas', 'resto'].forEach(id => {
-                const el = document.getElementById(`tbody-${id}`);
-                if(el) el.innerHTML = ''; 
-            });
+            ['hogar', 'coche', 'ocio', 'deudas', 'resto'].forEach(id => document.getElementById(`tbody-${id}`).innerHTML = '');
 
             data.forEach(row => {
-                // FILTRO ANTI-SCROLL: Ignora filas sin Fecha o sin Importe
-                if (!row.Fecha || !row.Importe || row.Fecha.trim() === "") return;
-
-                const monto = parseFloat(row.Importe.toString().replace('.', '').replace(',', '.')) || 0;
-                const int = parseFloat((row['Int. Recibo'] || "0").toString().replace('.', '').replace(',', '.')) || 0;
-                const amo = parseFloat((row['Amort. Recibo'] || "0").toString().replace('.', '').replace(',', '.')) || 0;
+                const monto = parseFloat(row.Importe.replace('.','').replace(',','.')) || 0;
+                const int = parseFloat(row['Int. Recibo']?.replace('.','').replace(',','.')) || 0;
+                const amo = parseFloat(row['Amort. Recibo']?.replace('.','').replace(',','.')) || 0;
 
                 totals.total += monto;
                 totals.intereses += int;
                 totals.amortizado += amo;
-                if(row.Tipo?.trim() === 'Inversión') totals.inversion += monto;
+                if(row.Tipo?.includes('Inversión')) totals.inversion += monto;
 
-                // Sumar a estadísticas de categoría
-                const catRaw = row.Categoría?.trim() || 'Resto';
-                if(catStats[catRaw] !== undefined) {
-                    catStats[catRaw] += monto;
-                } else {
-                    catStats['Resto'] += monto;
-                }
+                const cat = row.Categoría?.trim() || 'Resto';
+                if(catStats[cat] !== undefined) catStats[cat] += monto;
+                else catStats['Resto'] += monto;
 
-                // Inyectar en la tabla correspondiente
-                const targetTable = document.getElementById(`tbody-${catRaw.toLowerCase()}`);
-                if(targetTable) {
-                    targetTable.innerHTML += `
-                        <tr class="hover:bg-slate-800/40">
-                            <td class="p-4 text-slate-500 text-[10px] w-24">${row.Fecha}</td>
-                            <td class="p-4 font-medium">${row.Concepto || '-'}</td>
-                            <td class="p-4 text-right font-bold text-slate-100">${monto.toLocaleString('es-ES', {minimumFractionDigits: 2})} €</td>
-                        </tr>
-                    `;
+                const table = document.getElementById(`tbody-${cat.toLowerCase()}`);
+                if(table) {
+                    table.innerHTML += `<tr class="border-b border-slate-800/50"><td class="py-2 text-slate-500">${row.Fecha}</td><td class="py-2">${row.Concepto}</td><td class="py-2 text-right font-bold">${monto.toFixed(2)}€</td></tr>`;
                 }
             });
 
-            // Formatear KPIs
-            const f = (val) => val.toLocaleString('es-ES', {minimumFractionDigits: 2}) + " €";
+            const f = (n) => n.toLocaleString('es-ES') + " €";
             document.getElementById('gastoGlobal').innerText = f(totals.total);
             document.getElementById('totalIntereses').innerText = f(totals.intereses);
             document.getElementById('totalAmortizado').innerText = f(totals.amortizado);
             document.getElementById('totalInversion').innerText = f(totals.inversion);
 
-            updateChart(catStats);
-        }
-
-        function updateChart(stats) {
-            const ctx = document.getElementById('chartCategorias').getContext('2d');
             if(myChart) myChart.destroy();
-            
+            const ctx = document.getElementById('chartCategorias').getContext('2d');
             myChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: Object.keys(stats),
-                    datasets: [{
-                        data: Object.values(stats),
-                        backgroundColor: ['#3b82f6', '#f59e0b', '#ec4899', '#ef4444', '#64748b'],
-                        borderWidth: 0,
-                        hoverOffset: 15
-                    }]
+                    labels: Object.keys(catStats),
+                    datasets: [{ data: Object.values(catStats), backgroundColor: ['#3b82f6','#f59e0b','#ec4899','#ef4444','#64748b'], borderWidth: 0 }]
                 },
-                options: {
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, padding: 20 } }
-                    },
-                    cutout: '75%'
-                }
+                options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } } } }
             });
         }
 
